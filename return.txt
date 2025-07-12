@@ -1,0 +1,67 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+# Streamlit App Title
+st.title("Amazon Return Report Dashboard")
+
+# File Uploader
+uploaded_file = st.file_uploader("Upload Amazon Return Report", type=["csv", "xlsx"])
+
+if uploaded_file:
+    # Read the file
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = pd.read_excel(uploaded_file)
+    
+    st.write("### Raw Data Preview")
+    st.dataframe(df.head())
+    
+    # Convert dates to datetime
+    df["Order date"] = pd.to_datetime(df["Order date"], errors='coerce')
+    df["Return request date"] = pd.to_datetime(df["Return request date"], errors='coerce')
+    df["Return delivery date"] = pd.to_datetime(df["Return delivery date"], errors='coerce')
+    
+    # Filters
+    return_status = st.multiselect("Filter by Return Request Status", options=df["Return request status"].dropna().unique(), default=df["Return request status"].dropna().unique())
+    return_reason = st.multiselect("Filter by Return Reason", options=df["Return reason"].dropna().unique(), default=df["Return reason"].dropna().unique())
+    
+    # Apply Filters
+    filtered_df = df[
+        (df["Return request status"].isin(return_status)) &
+        (df["Return reason"].isin(return_reason))
+    ]
+    
+    st.write("### Filtered Data Preview")
+    st.dataframe(filtered_df.head())
+    
+    # Summary Metrics
+    total_returns = filtered_df.shape[0]
+    total_refunded = filtered_df["Refunded Amount"].sum()
+    most_common_reason = filtered_df["Return reason"].mode()[0] if not filtered_df["Return reason"].empty else "N/A"
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Returns", total_returns)
+    with col2:
+        st.metric("Total Refunded Amount", f"Rs.{total_refunded:,.2f}")
+    with col3:
+        st.metric("Most Common Return Reason", most_common_reason)
+    
+    # Returns Over Time Chart
+    returns_by_date = filtered_df.groupby(filtered_df["Return request date"].dt.date).size().reset_index(name="Returns")
+    fig = px.line(returns_by_date, x="Return request date", y="Returns", title="Returns Over Time")
+    st.plotly_chart(fig)
+    
+    # Top Returned Products
+    top_returned_products = filtered_df["Item Name"].value_counts().reset_index()
+    top_returned_products.columns = ["Product Name", "Return Count"]
+    st.write("### Top Returned Products")
+    st.dataframe(top_returned_products.head(10))
+    
+    # Return Resolutions
+    return_resolutions = filtered_df["Resolution"].value_counts().reset_index()
+    return_resolutions.columns = ["Resolution Type", "Count"]
+    fig = px.pie(return_resolutions, names="Resolution Type", values="Count", title="Return Resolutions Distribution")
+    st.plotly_chart(fig)
