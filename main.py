@@ -27,3 +27,10 @@ elif platform == "Myntra":
     run_script("myntra_app.py")
 elif platform == "Meesho":
     run_script("meesho_app.py")
+
+# Footer credit
+st.markdown("---")
+st.markdown(
+    "<p style='text-align: center; color: gray;'>By <strong>Tech Assasins</strong> | Powered by <strong>Seller Rocket</strong></p>",
+    unsafe_allow_html=True
+)
